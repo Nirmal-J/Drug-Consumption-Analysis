@@ -1,0 +1,545 @@
+---
+title: "Drug_Consumption"
+author: "Nirmal Sai Swaroop Janapaneedi"
+date: "20/05/2020"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Our project is based on a database called Drug consumption (quantified). The database contains records for 1885 respondents. For each respondent, 12 attributes are known: Personality measures which include NEO-FFI-R (neuroticism, extroversion, openness to experience, friendliness and awareness), BIS-11 (impulsivity) and ImpSS (sensation seeking), education, age, gender, country of residence and ethnicity. All input attributes are originally categorical and are quantified. After quantification, the values of all input attributes can be considered as real values. In addition, participants were asked about their use of 18 legal and illegal drugs (alcohol, amphetamines, amyl nitrite, benzodiazepine, cannabis, chocolate, cocaine, caffeine, crack, ecstasy, heroin, ketamine, legal high, LSD, methadone, mushrooms, nicotine, and volatile substance abuse) and one fictitious drug (Semeron) that was introduced to identify overdemanders. For each drug, they must choose one of the following answers: never used the drug, used it more than 10 years ago, or used it in the last decade, year, month, week or day.The database contains 18 classification problems. Each of the independent label variables contains seven classes: "Never used", "Used in the past decade", "Used in the last decade", "Used last year", "Used last month", "Used last week" and "Used last day".The objective of this project is to investigate the factors of drug use. Initially, we look at personality traits and demographics as a factor influencing drug use in the case of cannabis. In a second step, we analysed the risk of consumption between 18 drugs and thus of preventing any drug dependence.
+Achieving this objective involves 3 essential points:
+-Dowload Data and package
+-Replace classification
+-Method
+-Result
+-Conclusion.
+
+## Dowload Data and package
+We load the database and the necessary packages for our analysis.This database was borrowed from the UCI "Machine Learning Repositoring" platform. The use of certain technical and graphical methods required several packages.
+
+### Dowload package
+To analyze the data, we need a number of R packages.
+
+```{r setup, include=TRUE}
+library(Hmisc)
+library(readr)
+library(ggplot2)
+library(pastecs)
+library(gridExtra)
+library(arules)       
+library(arulesViz) 
+library(dplyr)
+library(tidyselect)
+library(RColorBrewer)
+library(corrplot)
+library(RColorBrewer)
+library(qgraph)
+library(igraph)
+library(data.table)
+library(tidyverse)
+library(corrr)
+library(igraph)
+library(ggraph)
+```
+
+### Dowload Data
+We are downloading the database from the drug use survey. Drug use is related to psychological, social, environmental, economic and individual factors. The data consists of 32 columns and 1885 rows . We bring the real names of the variables into the database. 13 variables are numeric, while 19 are characters.
+
+```{r base, include=TRUE}
+drug_consumption <- read_csv("drug_consumption.data", col_names = FALSE)
+#########################Replace name of variables##############################
+names(drug_consumption)
+
+drug <- drug_consumption
+names(drug) <- c("ID","Age","Gender","Education","Country","Ethnicity","Nscore",
+                 "Escore","Oscore","Ascore","Cscore","Impulsive","SS","Alcohol",
+                 "Amphet","Amyl","Benzos","Caff","Cannabis","Choc","Coke","Crack"                  ,"Ecstasy","Heroin","Ketamine","Legalh","LSD","Meth","Mushrooms"                  ,"Nicotine","Semer","VSA")
+names(drug)
+str(drug)
+summary(drug)
+```
+
+## Replace classification
+Update data to make it more understandable.
+The initial classification provided for several types of consumers, we recommend in our analysis that they be divided into two groups . 
+Update categorical data for drug use to be binary: 0 = non-user, 1 = user.
+This step is very important for the rest of our analysis because it will make it more digestible.
+
+```{r drug, include=TRUE}
+#drug
+drug[drug=="CL0"]="no" 
+drug[drug=="CL1"]="yes" 
+drug[drug=="CL2"]="yes" 
+drug[drug=="CL3"]="yes" 
+drug[drug=="CL4"]="yes" 
+drug[drug=="CL5"]="yes" 
+drug[drug=="CL6"]="yes" 
+```
+
+One thousand eight hundred and eighty-five participants. We have two genders, 943 men and 942 women.
+
+```{r gender, include=TRUE}
+###################################Gender#######################################
+drug$Gender <- factor(drug$Gender,labels=c('H','F')) ; drug$Gender
+summary(drug$Gender)
+```
+
+We have 9 categories in education.
+
+```{r Education, include=TRUE}
+##################################Education#####################################
+drug$Education[drug$Education==-2.43591]="Left school before 16 years" 
+drug$Education[drug$Education==-1.73790]="Left school at 16 years" 
+drug$Education[drug$Education==-1.43719]="Left school at 17 years" 
+drug$Education[drug$Education==-1.22751]="Left school at 18 years" 
+drug$Education[drug$Education==-0.61113]="Some college or university, no certificate or degree" 
+drug$Education[drug$Education==-0.05921]="Professional certificate/ diploma" 
+drug$Education[drug$Education==0.45468]="University degree" 
+drug$Education[drug$Education==1.16365]="Masters degree" 
+drug$Education[drug$Education==1.98437]="Doctorate degree" 
+```
+
+We have 7 countries.
+
+```{r Country, include=TRUE}
+#################################Country########################################
+drug$Country[drug$Country==-0.09765]="Australia" 
+drug$Country[drug$Country==0.24923]="Canada" 
+drug$Country[drug$Country==-0.46841]="New Zealand" 
+drug$Country[drug$Country==-0.28519]="Other" 
+drug$Country[drug$Country==0.21128]="Republic of Ireland" 
+drug$Country[drug$Country==0.96082]="UK" 
+drug$Country[drug$Country==-0.57009]="USA" 
+```
+
+We have 7 categories in ethnicity.
+
+```{r Ethnicity, include=TRUE}
+################################Ethnicity#######################################
+drug$Ethnicity[drug$Ethnicity==-0.50212]="Asian"
+drug$Ethnicity[drug$Ethnicity==-1.10702]="Black"
+drug$Ethnicity[drug$Ethnicity==1.90725]="Mixed-Black/Asian"
+drug$Ethnicity[drug$Ethnicity==0.12600]="Mixed-White/Asian"
+drug$Ethnicity[drug$Ethnicity==-0.22166]="Mixed-White/Black"
+drug$Ethnicity[drug$Ethnicity==0.11440]="Other"
+drug$Ethnicity[drug$Ethnicity==-0.31685]="White"
+```
+
+We have 6 categories in age. 
+
+```{r Age, include=TRUE}
+#################################Age############################################
+drug$Age[drug$Age==-0.95197]="18-24" 
+drug$Age[drug$Age==-0.07854]="25-34"
+drug$Age[drug$Age==0.49788]="35-44"
+drug$Age[drug$Age==1.09449]="45-54"
+drug$Age[drug$Age==1.82213]="55-64"
+drug$Age[drug$Age==2.59171]="65+"
+```
+## Method
+To carry out our analysis, we rely mainly on descriptive data analysis and correlation analysis. Tackling each drug specifically can be a long and difficult task, which is why we have tested descriptive analysis specific in some cases to cannabis, but this can be extended to other drugs. The first step was to analyse drug use in relation to individual attributes. The second step was to analyse the correlation (Matrix Of Correlations And P-Values  of Pearson's and Spearman') of the use of different drugs with each other.
+
+## Results
+The results are in two parts. The first part refers to the analysis of the data and the analysis of the relationship between the different attributes and drug use (the case of cannabis). The second part focuses on the results of the correlation between different drug use.
+
+### Data analyse
+We analyze the structure of the data.Individuals reported their age range, rather than their exact age: 18-24 years (34.1%), 25-34 years (25.5%), 35-44 years (18.9%), 45-54 years (15.6%), 55-64 years (4.9%), and over 65 years (1%).
+The proportion of gender reveals: 50.03% male and 49.97% female. Most of the individuals come from the USA and the UK, with 29.54% and 55.38% respectively. 91.24% of the individuals in our database are white. 
+
+```{r Data_analyse, include=TRUE}
+#Age
+table(drug$Age)
+table(drug$Age)/nrow(drug) 
+#Gender
+table(drug$Gender)
+table(drug$Gender)/nrow(drug) 
+#Education
+table(drug$Education)
+table(drug$Education)/nrow(drug) 
+#Country
+table(drug$Country)
+table(drug$Country)/nrow(drug) 
+#Ethnicity
+table(drug$Ethnicity)
+table(drug$Ethnicity)/nrow(drug) 
+```
+
+Graphic summary of age, Gender, Education, Country and Ethnicity.
+
+```{r Graph, include=TRUE}
+#Graph
+par(mfrow = c(2,3))
+pie(table(drug$Age), main = "Age")
+pie(table(drug$Gender), main = "Gender")
+pie(table(drug$Education), main = "Education")
+pie(table(drug$Country), main = "Country")
+pie(table(drug$Ethnicity), main = "Ethnicity",cex = 0.5)
+```
+
+Factors influencing drug use can be associated with several personality traits, namely: neuroticism (N), extroversion (E), openness to experience (O), agreeableness (A) and consciousness (C). 
+
+```{r score, include=TRUE}
+#Nscore
+table(drug$Nscore)
+summary(drug$Nscore)
+stat.desc(drug$Nscore, norm=TRUE)
+
+#Escore
+table(drug$Escore)
+summary(drug$Escore)
+stat.desc(drug$Escore, norm=TRUE)
+
+#Oscore
+table(drug$Oscore)
+summary(drug$Oscore)
+stat.desc(drug$Oscore, norm=TRUE)
+
+#Ascore
+table(drug$Ascore)
+summary(drug$Ascore)
+stat.desc(drug$Ascore, norm=TRUE)
+
+#Cscore
+table(drug$Cscore)
+summary(drug$Cscore)
+stat.desc(drug$Cscore, norm=TRUE)
+
+#Impulsive
+table(drug$Impulsive)
+summary(drug$Impulsive)
+stat.desc(drug$Impulsive, norm=TRUE)
+
+#SS
+table(drug$SS)
+summary(drug$SS)
+stat.desc(drug$SS, norm=TRUE)
+```
+
+The use of 18 drugs, including alcohol, amphetamines, amyl nitrite, benzodiazepines, cannabis, chocolate, cocaine, caffeine, crack cocaine, ecstasy, heroin, ketamine, legal drugs, LSD, methadone, magic mushrooms, nicotine and volatile substance abuse (VSA).
+
+```{r drug_cons, include=TRUE}
+#Alcohol
+table(drug$Alcohol)
+table(drug$Alcohol)/nrow(drug) 
+#pie(table(drug$Alcohol))
+
+#Amphet
+table(drug$Amphet)
+table(drug$Amphet)/nrow(drug) 
+
+#Amyl
+table(drug$Amyl)
+table(drug$Amyl)/nrow(drug) 
+
+#Benzos
+table(drug$Benzos)
+table(drug$Benzos)/nrow(drug) 
+
+#caff
+table(drug$Caff)
+table(drug$Caff)/nrow(drug) 
+
+#cannabis
+table(drug$Cannabis)
+table(drug$Cannabis)/nrow(drug) 
+
+#choc
+table(drug$Choc)
+table(drug$Choc)/nrow(drug) 
+#coke
+table(drug$Coke)
+table(drug$Coke)/nrow(drug) 
+#crack
+table(drug$Crack)
+table(drug$Crack)/nrow(drug) 
+#Ecstacy
+table(drug$Ecstasy)
+table(drug$Ecstasy)/nrow(drug) 
+#Heroin
+table(drug$Heroin)
+table(drug$Heroin)/nrow(drug) 
+#Ketamine
+table(drug$Ketamine)
+table(drug$Ketamine)/nrow(drug) 
+#Legalh
+table(drug$Legalh)
+table(drug$Legalh)/nrow(drug) 
+#LSD
+table(drug$LSD)
+table(drug$LSD)/nrow(drug) 
+#Meth
+table(drug$Meth)
+table(drug$Meth)/nrow(drug) 
+#Mushrooms
+table(drug$Mushrooms)
+table(drug$Mushrooms)/nrow(drug) 
+#Nicotine
+table(drug$Nicotine)
+table(drug$Nicotine)/nrow(drug) 
+#Semer
+table(drug$Semer)
+table(drug$Semer)/nrow(drug) 
+#VSA
+table(drug$VSA)
+table(drug$VSA)/nrow(drug) 
+```
+
+Graphic summary of drug consumption.
+Analysis of the data reveals that, with the exception of cannabis, caff, amphetamines and nicotine, the proportion of non-drug users is higher.
+
+```{r drug_cons_graph, include=TRUE}
+#Graph
+par(mfrow = c(2,3))
+pie(table(drug$Amphet), main = "Amphet")
+pie(table(drug$Amyl), main = "Amyl")
+pie(table(drug$Benzos), main = "Benzos")
+pie(table(drug$Caff), main = "Caff")
+pie(table(drug$Cannabis), main = "Cannabis")
+pie(table(drug$VSA), main = "VSA")
+
+par(mfrow = c(2,3))
+pie(table(drug$Semer), main = "Semer")
+pie(table(drug$Nicotine), main = "Nicotine")
+pie(table(drug$Mushrooms), main = "Mushrooms")
+pie(table(drug$Meth), main = "Meth")
+pie(table(drug$LSD), main = "LSD")
+pie(table(drug$Legalh), main = "Legalh")
+
+par(mfrow = c(2,3))
+pie(table(drug$Ketamine), main = "Ketamine")
+pie(table(drug$Heroin), main = "Heroin")
+pie(table(drug$Ecstasy), main = "Ecstasy")
+pie(table(drug$Crack), main = "Crack")
+pie(table(drug$Coke), main = "Coke")
+pie(table(drug$Caff), main = "Caff")
+```
+
+### Personnality measurement vs drug
+We take the case of cannabis to analyze the influence of individual characteristics on drug use.  A distinction is made between consumers and non-consumers. 
+
+```{r Personnality measurement vs drug, include=TRUE}
+####################Personality Measurements
+#level of education, age, gender, country of residence and ethnicity
+##Education
+G1<-ggplot(drug) +
+  aes(x = Education, fill = Cannabis) +
+  geom_bar(position = "dodge") +
+  scale_fill_hue() +
+  labs(title = "Education") +
+  coord_flip() +
+  theme_minimal()
+
+##Age
+G2<-ggplot(drug) +
+  aes(x = Age, fill = Cannabis) +
+  geom_bar() +
+  scale_fill_hue() +
+  labs(title = "Age") +
+  theme_minimal()
+
+##Gender
+G3<-ggplot(drug) +
+  aes(x = Gender, fill = Cannabis) +
+  geom_bar(position = "fill") +
+  scale_fill_hue() +
+  labs(title = "Gender") +
+  coord_flip() +
+  theme_minimal()
+
+##Ethnicity
+G4<-ggplot(drug) +
+  aes(x = Ethnicity, fill = Cannabis) +
+  geom_bar(position = "fill") +
+  scale_fill_hue() +
+  labs(title = "Ethnicity") +
+  coord_flip() +
+  theme_minimal()
+
+##Country
+G5<-ggplot(drug) +
+  aes(x = Country, fill = Cannabis) +
+  geom_bar(position = "dodge") +
+  scale_fill_hue() +
+  labs(title = "Country") +
+  coord_flip() +
+  theme_minimal()
+
+grid.arrange(G1, G2, G3, G4, G5, ncol=2, nrow = 3)
+```
+
+### NEO-FFI-R vs drug
+Drug use risk for each individual based on personality traits. 
+
+```{r NEO-FFI-R vs drug, include=TRUE}
+#NEO-FFI-R
+########neuroticism 
+G6<-ggplot(drug) +
+  aes(x = Nscore, fill = Cannabis) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue() +
+  labs(title = "Neuroticism") +
+  theme_minimal()
+
+########extraversion 
+G7<-ggplot(drug) +
+  aes(x = Escore, fill = Cannabis) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue() +
+  labs(title = "Extraversion") +
+  theme_minimal()
+
+########openness to experience 
+G8<-ggplot(drug) +
+  aes(x = Oscore, fill = Cannabis) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue() +
+  labs(title = "Openness to experience") +
+  theme_minimal()
+
+########Agreeableness
+G9<-ggplot(drug) +
+  aes(x = Ascore, fill = Cannabis) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue() +
+  labs(title = "Agreeableness") +
+  theme_minimal()
+
+##########Conscientiousness
+G10<-ggplot(drug) +
+  aes(x = Cscore, fill = Cannabis) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue() +
+  labs(title = "Conscientiousness") +
+  theme_minimal()
+
+##########impulsiveness
+G11<-ggplot(drug) +
+  aes(x = Impulsive, fill = Cannabis) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue() +
+  labs(title = "impulsiveness") +
+  theme_minimal()
+
+#########sensation seeing
+G12<-ggplot(drug) +
+  aes(x = SS, fill = Cannabis) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue() +
+  labs(title = "sensation seeing") +
+  theme_minimal()
+
+grid.arrange(G6, G7, G8, G9, G10, G11, G12, ncol=2, nrow = 4)
+```
+
+### Interrelationship in drug consumption
+Multi-drug correlation analysis shows that drug use is essentially correlated. 
+
+```{r Interrelationship in drug consumption, include=TRUE}
+drugg<- drug
+
+drugg[drugg=="no"]="0" 
+drugg[drugg=="yes"]="1" 
+
+drugg$VSA<-as.numeric(as.character(drugg$VSA))
+is.numeric(drugg$VSA)
+drugg$Semer<-as.numeric(as.character(drugg$Semer))
+drugg$Nicotine<-as.numeric(as.character(drugg$Nicotine))
+drugg$Mushrooms<-as.numeric(as.character(drugg$Mushrooms))
+drugg$Meth<-as.numeric(as.character(drugg$Meth))
+drugg$LSD<-as.numeric(as.character(drugg$LSD))
+drugg$Legalh<-as.numeric(as.character(drugg$Legalh))
+drugg$Ketamine<-as.numeric(as.character(drugg$Ketamine))
+drugg$Heroin<-as.numeric(as.character(drugg$Heroin))
+drugg$Ecstasy<-as.numeric(as.character(drugg$Ecstasy))
+drugg$Crack<-as.numeric(as.character(drugg$Crack))
+drugg$Coke<-as.numeric(as.character(drugg$Coke))
+drugg$Choc<-as.numeric(as.character(drugg$Choc))
+drugg$Cannabis<-as.numeric(as.character(drugg$Cannabis))
+drugg$Caff<-as.numeric(as.character(drugg$Caff))
+drugg$Benzos<-as.numeric(as.character(drugg$Benzos))
+drugg$Amyl<-as.numeric(as.character(drugg$Amyl))
+drugg$Amphet<-as.numeric(as.character(drugg$Amphet))
+drugg$Alcohol<-as.numeric(as.character(drugg$Alcohol))
+```
+
+Drug Use Correlation Matrix
+
+```{r Correlation, include=TRUE}
+drugg1 <- as.matrix(drugg[14:32])
+
+cor_2 <- rcorr(drugg1)
+cor_2
+```
+
+```{r Correlation1, include=TRUE}
+cor(drugg1, method = c("pearson", "kendall", "spearman")) 
+```
+
+Drug Use Correlation Matrix (graphical representation)
+
+```{r Correlation2, include=TRUE}
+temp <- drugg %>% select(one_of("Alcohol",
+                          "Amphet","Amyl","Benzos","Caff","Cannabis","Choc","Coke","Crack","Ecstasy",
+                               "Heroin","Ketamine","Legalh","LSD","Meth","Mushrooms","Nicotine",
+                               "Semer","VSA")) %>% as.matrix()
+M <- cor(temp, use = "pairwise.complete.obs")
+par(mfrow = c(1,1))
+
+corrplot(M, order = "hclust", addrect = 2, type = "lower", col = brewer.pal(n = 8, name = "RdBu"))
+```
+
+Analysis of the correlation matrix shows that drug use is highly correlated with each other with the exception of caff, alcohol, sowing and shock. 
+
+```{r Correlation3, include=TRUE}
+par(mfrow = c(1,2))
+corrplot(M, method = "pie")
+corrplot(M, order = "hclust")
+```
+
+```{r Correlation4, include=TRUE}
+par(mfrow = c(1,2))
+corrplot(M, type = "upper", order = "hclust",
+         col = brewer.pal(n = 9, name = "PuOr"), bg = "darkgreen")
+
+p_mat <- cor_2$P
+corrplot(M, type = "upper", order = "hclust", 
+         p.mat = p_mat, sig.level = 0.01)
+```
+
+Interrelation between the use of different drugs (graphical representation)
+The correlations are quite positive.
+
+```{r Correlation5, include=TRUE}
+#####################
+tidy_cors <- drugg1 %>% 
+  correlate() %>% 
+  stretch()
+
+graph_cors <- tidy_cors %>%
+  filter(abs(r) > .3) %>%
+  graph_from_data_frame(directed = FALSE)
+
+ggraph(graph_cors) +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name))
+
+ggraph(graph_cors) +
+  geom_edge_link(aes(edge_alpha = abs(r), edge_width = abs(r), color = r)) +
+  guides(edge_alpha = "none", edge_width = "none") +
+  scale_edge_colour_gradientn(limits = c(-1, 1), colors = c("firebrick2", "dodgerblue2")) +
+  geom_node_point(color = "white", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  theme_graph() +
+  labs(title = "Correlations between Drug variables")
+```
+
+## Conclusion
+We evaluated the individual drug consumption risk for each drug. We analysed interrelations between the individual drug consumption risks for different drugs.Some drugs are used together or lead individuals to use other drugs. This analysis has provided an understanding of addiction issues and allowed for analysis in terms of forecasting.
+Correlation analysis shows that there are many correlations with the exception of four drugs.
